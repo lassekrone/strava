@@ -1,0 +1,4 @@
+venv
+.env
+garmin.code-workspace
+strava-api/Polyline.encoded.js
