@@ -2,3 +2,8 @@ venv
 .env
 garmin.code-workspace
 strava-api/Polyline.encoded.js
+test.py
+apple-health
+.vscode
+strava-api/data.json
+strava-api/experiment.ipynb
