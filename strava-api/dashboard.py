@@ -10,6 +10,7 @@ import folium
 from streamlit_folium import st_folium
 import polyline
 import plotly.express as px
+from build_data_model import connect_postgres
 
 
 def time_filter(df):
@@ -35,12 +36,15 @@ def main():
     st.title("Strava Dashboard")
 
     # Read in data
-    with open("data.json", "r") as f:
-        df = json.load(f)
+    # with open("strava-api/strava_data/2023_11_30_export_file.json", "r") as f:
+    #     df = json.load(f)
+    # df = pd.json_normalize(df)
 
-    df = pd.json_normalize(df)
-    df.index = pd.to_datetime(df["start_date_local"]).values
-    df["polyline_decoded"] = df["map.summary_polyline"].apply(polyline.decode)
+    pg_conn = connect_postgres()
+    df = pd.read_sql_query("SELECT * FROM strava_activities;", pg_conn)
+
+    df.index = pd.to_datetime(df["start_date"]).values
+    df["polyline_decoded"] = df["summary_polyline"].apply(polyline.decode)
     df["activity_name"] = df["name"] + " (" + df.index.strftime("%d-%m-%Y %H:%M") + ")"
     df["kilometers"] = df["distance"] / 1000
     df["min/km"] = df["moving_time"] / 60 / df["kilometers"]
@@ -95,14 +99,14 @@ def main():
     weekly_progress = yearly_distance["kilometers"].resample("W").sum()
     weekly_progress = weekly_progress[
         weekly_progress.index.isocalendar().week
-        >= datetime.datetime.today().isocalendar().week - 12
+        >= datetime.datetime.today().isocalendar().week - 11
     ]
 
     # create tmp df with last 12 weeks including next week
     tmp = (
         pd.Series(
             index=pd.date_range(
-                start=datetime.datetime.today() - datetime.timedelta(weeks=12),
+                start=datetime.datetime.today() - datetime.timedelta(weeks=11),
                 end=datetime.datetime.today() + datetime.timedelta(days=7),
                 freq="W",
             )
@@ -155,13 +159,13 @@ def main():
     m = folium.Map(location=[lat, lon], zoom_start=13, tiles="OpenStreetMap")
     folium.PolyLine(yearly_distance["polyline_decoded"], color="green").add_to(m)
     folium.Marker(
-        yearly_distance["start_latlng"][0],
+        yearly_distance[["start_lat", "start_lng"]].iloc[0].tolist(),
         popup="Start",
         icon=folium.Icon(color="green", icon="play", size=(10, 10)),
         tooltip="Start",
     ).add_to(m)
     folium.Marker(
-        yearly_distance["end_latlng"][0],
+        yearly_distance[["end_lat", "end_lng"]].iloc[0].tolist(),
         popup="End",
         icon=folium.Icon(color="red", icon="stop", size=(10, 10)),
         tooltip="End",
