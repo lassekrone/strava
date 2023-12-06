@@ -8,4 +8,3 @@ apple-health
 .vscode
 strava-api/data.json
 strava-api/experiment.ipynb
-pipeline.py
